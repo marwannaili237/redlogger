@@ -2,44 +2,58 @@ name: Build APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
-    env:
-      ANDROID_HOME: /opt/android-sdk
-      BUILDOZER_ALLOW_ROOT: 1
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y git zip unzip openjdk-17-jdk python3-pip python3-setuptools libncurses5 curl wget libffi-dev libssl-dev
-        python3 -m pip install --upgrade pip
-        pip3 install --user buildozer cython
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
 
-    - name: Setup Android SDK & NDK
-      run: |
-        mkdir -p $ANDROID_HOME/cmdline-tools
-        cd $ANDROID_HOME/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-        unzip tools.zip -d latest
-        yes | ./latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} --licenses
-        yes | ./latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} "platform-tools" "platforms;android-31" "build-tools;31.0.0" "ndk;23.1.7779620"
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y zip unzip libncurses5 zlib1g-dev libstdc++6 python3-pip python3-setuptools git openjdk-11-jdk
 
-    - name: Build APK
-      run: |
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-        buildozer android release
+      - name: Install Buildozer & Cython
+        run: |
+          pip install --upgrade pip
+          pip install cython==0.29.36 buildozer
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: RedLogger-APK
-        path: bin/*.apk
+      - name: Install Android SDK cmdline tools
+        run: |
+          mkdir -p "$HOME/android-sdk/cmdline-tools"
+          cd "$HOME/android-sdk/cmdline-tools"
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
+          unzip tools.zip
+          mv cmdline-tools latest
+          rm tools.zip
+
+      - name: Set environment vars
+        run: |
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Accept licenses
+        run: |
+          yes | sdkmanager --sdk_root=$HOME/android-sdk --licenses
+
+      - name: Build APK
+        run: |
+          buildozer android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: redlogger-apk
+          path: bin/*.apk
