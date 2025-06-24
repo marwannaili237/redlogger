@@ -4,20 +4,24 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: ⬇️ Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Install dependencies + Android SDK tools
+      - name: Install dependencies + Android SDK tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y zip unzip openjdk-11-jdk python3-pip python3-setuptools python3-distutils libncurses5 libstdc++6 libffi-dev libssl-dev libsqlite3-dev libz-dev git wget
+          sudo apt-get install -y \
+            zip unzip openjdk-17-jdk python3-pip python3-venv \
+            libncurses-dev libffi-dev libssl-dev libsqlite3-dev zlib1g-dev wget git
 
+          # تثبيت Android SDK Command Line Tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
           sudo mkdir -p /usr/lib/android-sdk/cmdline-tools
           sudo unzip tools.zip -d /usr/lib/android-sdk/cmdline-tools
@@ -30,16 +34,19 @@ jobs:
           yes | sdkmanager --licenses
           yes | sdkmanager --install "platform-tools" "platforms;android-31" "build-tools;31.0.0" "ndk;23.1.7779620"
 
-      - name: 🐍 Install Python packages
+      - name: Install Python packages
         run: |
-          pip install --upgrade pip
-          pip install buildozer cython
+          python3 -m pip install --upgrade pip setuptools wheel
+          pip install cython buildozer
 
-      - name: 🏗️ Build APK
+      - name: Build APK
+        env:
+          ANDROID_HOME: /usr/lib/android-sdk
+          PATH: /usr/lib/android-sdk/cmdline-tools/latest/bin:/usr/lib/android-sdk/platform-tools:$PATH
         run: |
           buildozer android debug
 
-      - name: 📦 Upload APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: redlogger-apk
