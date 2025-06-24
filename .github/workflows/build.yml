@@ -10,22 +10,35 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: kivy/buildozer:py3.10-ubuntu
+
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 📦 Install dependencies
+      - name: Install SDK tools + AIDL support
         run: |
           apt-get update
-          apt-get install -y zip unzip openjdk-17-jdk
+          apt-get install -y zip unzip wget openjdk-17-jdk
 
-      - name: 🛠 Build APK
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          cd "$ANDROID_HOME/cmdline-tools"
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
+          unzip tools.zip
+          mv cmdline-tools latest
+          rm tools.zip
+
+          yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
+          yes | sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" \
+            "platforms;android-31" "build-tools;31.0.0" "ndk;23.1.7779620"
+
+      - name: Build with Buildozer
         run: |
+          # ensure buildozer is latest
           pip install --upgrade buildozer cython
           buildozer android debug
 
-      - name: ⬆ Upload APK
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: redlogger.apk
+          name: redlogger-apk
           path: bin/*.apk
