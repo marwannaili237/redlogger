@@ -1,0 +1,31 @@
+name: Build Kivy APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: kivy/buildozer:py3.10-ubuntu
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y zip unzip openjdk-17-jdk
+
+      - name: 🛠 Build APK
+        run: |
+          pip install --upgrade buildozer cython
+          buildozer android debug
+
+      - name: ⬆ Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: redlogger.apk
+          path: bin/*.apk
