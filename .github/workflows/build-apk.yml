@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: ⚙️ Install system dependencies
+      - name: ⚙️ Install system dependencies + Android SDK tools
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -29,17 +29,37 @@ jobs:
             libssl-dev libsqlite3-dev \
             libz-dev git wget
 
+          # Download and install Android SDK command-line tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O cmdline-tools.zip
+          sudo unzip cmdline-tools.zip -d /usr/lib/android-sdk
+          sudo mkdir -p /usr/lib/android-sdk/cmdline-tools/latest
+          sudo mv /usr/lib/android-sdk/cmdline-tools/cmdline-tools/* /usr/lib/android-sdk/cmdline-tools/latest/
+          rm cmdline-tools.zip
+
+          export ANDROID_HOME=/usr/lib/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+          yes | sdkmanager --install "platform-tools"
+          yes | sdkmanager --install "platforms;android-31"
+          yes | sdkmanager --install "build-tools;31.0.0"
+          yes | sdkmanager --install "platforms;android-33"
+          yes | sdkmanager --install "build-tools;33.0.0"
+          yes | sdkmanager --install "ndk;23.1.7779620"
+
       - name: 📦 Install buildozer
         run: |
           pip install --upgrade pip setuptools wheel
           pip install cython buildozer
 
-      - name: 📂 Build APK
+      - name: 🧪 Build APK
+        env:
+          ANDROID_HOME: /usr/lib/android-sdk
+          PATH: /usr/lib/android-sdk/cmdline-tools/latest/bin:/usr/lib/android-sdk/platform-tools:$PATH
         run: |
           buildozer android debug
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: My-APK
+          name: RedLogger-APK
           path: bin/*.apk
