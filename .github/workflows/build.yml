@@ -15,10 +15,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install SDK tools + AIDL support
+      - name: Install Android SDK and Tools
         run: |
-          apt-get update
-          apt-get install -y zip unzip wget openjdk-17-jdk
+          apt-get update && apt-get install -y zip unzip wget openjdk-17-jdk
 
           mkdir -p "$ANDROID_HOME/cmdline-tools"
           cd "$ANDROID_HOME/cmdline-tools"
@@ -29,15 +28,16 @@ jobs:
 
           yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
           yes | sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" \
-            "platforms;android-31" "build-tools;31.0.0" "ndk;23.1.7779620"
+            "platforms;android-33" \
+            "build-tools;33.0.2" \
+            "ndk;23.1.7779620"
 
-      - name: Build with Buildozer
+      - name: Build APK
         run: |
-          # ensure buildozer is latest
           pip install --upgrade buildozer cython
           buildozer android debug
 
-      - name: Upload artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: redlogger-apk
